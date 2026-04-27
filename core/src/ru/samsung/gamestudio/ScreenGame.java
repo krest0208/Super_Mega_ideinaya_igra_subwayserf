@@ -34,7 +34,7 @@ public class ScreenGame implements Screen {
         batch = new SpriteBatch();
 
         // Загружаем текстуры
-        playerTexture = new Texture("Charecter/player_static.png");
+        playerTexture = new Texture("charecter/static_p.png");
         backgroundTexture = new Texture("background/background1.png");  // загружаем фон
         ground = new Ground(-60, -420,1400,1012 );
     }

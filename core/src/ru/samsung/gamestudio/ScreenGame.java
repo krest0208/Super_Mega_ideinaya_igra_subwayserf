@@ -12,13 +12,12 @@ public class ScreenGame implements Screen {
     private OrthographicCamera camera;
     private SpriteBatch batch;
     private Texture playerTexture;
-    private Texture backgroundTexture;  // текстура фона
+    private Texture backgroundTexture;
     private Ground ground;
 
     private static final int SCREEN_WIDTH = 1280;
     private static final int SCREEN_HEIGHT = 720;
 
-    // Игрок
     private float playerX = 20;
     private float playerY = 40;
     private float playerWidth = 256;
@@ -33,7 +32,6 @@ public class ScreenGame implements Screen {
 
         batch = new SpriteBatch();
 
-        // Загружаем текстуры
         playerTexture = new Texture("charecter/static_p.png");
         backgroundTexture = new Texture("background/background1.png");  // загружаем фон
         ground = new Ground(-60, -420,1400,1012 );
@@ -41,7 +39,6 @@ public class ScreenGame implements Screen {
 
     @Override
     public void render(float delta) {
-        // Очищаем экран (на всякий случай, но фон его перекроет)
         ScreenUtils.clear(0.1f, 0.1f, 0.2f, 1);
 
         camera.update();
@@ -49,13 +46,10 @@ public class ScreenGame implements Screen {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        // Рисуем фон (первым, чтобы был позади всего)
         batch.draw(backgroundTexture, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-        // Рисуем пол
         ground.draw(batch);
 
-        // Рисуем игрока
         batch.draw(playerTexture, playerX, playerY, playerWidth, playerHeight);
 
         batch.end();

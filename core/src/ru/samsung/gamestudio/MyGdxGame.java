@@ -17,7 +17,7 @@ public class MyGdxGame extends Game {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT);
 
-        ScreenGame = new ScreenGame(this);
+        ScreenGame = new ScreenGame();
 
         setScreen(ScreenGame);
     }

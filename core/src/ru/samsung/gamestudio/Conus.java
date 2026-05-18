@@ -4,7 +4,7 @@ package ru.samsung.gamestudio;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
-public class Conus {
+public class Conus extends Obstacle {
 
     float x;
     float y;
@@ -94,7 +94,7 @@ public class Conus {
 
     public void draw(SpriteBatch batch) {
 
-        batch.draw(frames[currentFrame], x, y, 48, 48);
+        batch.draw(frames[currentFrame], x, y, 70, 70);
     }
 
 

@@ -52,6 +52,8 @@ public class ScreenGame implements Screen {
     private static final float GROUND_HEIGHT = 180;
 
     private static final float GROUND_SPEED = 200f;
+    private static final float FIRST_OBSTACLE_X = 1000f;
+    private static final float OBSTACLE_SPACING = 650f;
 
     private int groundContacts = 0;
 
@@ -75,7 +77,7 @@ public class ScreenGame implements Screen {
 
         font = new BitmapFont();
 
-        backgroundTexture = new Texture("background/backround1.png");
+        backgroundTexture = new Texture("background/bacround1.png");
 
         world = new World(new Vector2(0, -9.8f), true);
 
@@ -88,18 +90,16 @@ public class ScreenGame implements Screen {
                 GROUND_SPEED
         );
 
-        player = new Player(world, 200, GROUND_HEIGHT + 40);
+        player = new Player(world, 200, GROUND_HEIGHT + Player.DRAW_HEIGHT / 2f);
 
         player.getBody().setUserData(player);
 
         obstacles = new ArrayList<>();
 
-        obstacles.add(new Conus(1000, (int)GROUND_HEIGHT));
-
-        obstacles.add(new Trash(2000, (int)GROUND_HEIGHT));
-
-        obstacles.add(new Box(1200, (int)GROUND_HEIGHT));
-        obstacles.add(new Barrier(1700, (int)GROUND_HEIGHT));
+        obstacles.add(new Conus(FIRST_OBSTACLE_X, GROUND_HEIGHT));
+        obstacles.add(new Box(FIRST_OBSTACLE_X + OBSTACLE_SPACING, GROUND_HEIGHT));
+        obstacles.add(new Barrier(FIRST_OBSTACLE_X + OBSTACLE_SPACING * 2, GROUND_HEIGHT));
+        obstacles.add(new Trash(FIRST_OBSTACLE_X + OBSTACLE_SPACING * 3, GROUND_HEIGHT));
         gameOver = false;
         setupContactListener();
     }
@@ -188,10 +188,7 @@ public class ScreenGame implements Screen {
 
         for (Obstacle obstacle : obstacles) {
 
-             if (player.x + 40 > obstacle.x &&
-                    player.x < obstacle.x + 48 &&
-                    player.y + 40 > obstacle.y &&
-                    player.y < obstacle.y + 48) {
+            if (player.getBounds().overlaps(obstacle.getBounds())) {
 
                 gameOver = true;
             }

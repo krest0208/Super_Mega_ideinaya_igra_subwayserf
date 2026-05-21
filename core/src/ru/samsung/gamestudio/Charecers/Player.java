@@ -4,15 +4,21 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 
 public class Player {
     private static final float PPM = 100f;
+    public static final float DRAW_WIDTH = 110f;
+    public static final float DRAW_HEIGHT = 110f;
+    private static final float HITBOX_WIDTH = 58f;
+    private static final float HITBOX_HEIGHT = 92f;
+    private static final float JUMP_VELOCITY = 5.4f;
 
     private float x, y;
-    private float width = 80;
-    private float height = 80;
+    private float width = DRAW_WIDTH;
+    private float height = DRAW_HEIGHT;
 
     private Texture idle, jump, fall;
     private Texture[] run;
@@ -22,6 +28,7 @@ public class Player {
     private Body body;
     private World world;
     private boolean isGrounded;
+    private final Rectangle bounds = new Rectangle();
 
     enum State { IDLE, RUN, JUMP, FALL }
     private State state = State.RUN;
@@ -39,14 +46,18 @@ public class Player {
     }
 
     private void loadTextures() {
-        run = new Texture[10];
-        for (int i = 0; i < run.length; i++) {
-            run[i] = new Texture("character/run_p.png");
 
-        }
+        run = new Texture[2];
+
+        run[0] = new Texture("character/run_1.png");
+
+        run[1] = new Texture("character/run_2.png");
+
         idle = new Texture("character/static_p.png");
+
         jump = new Texture("character/jump_p.png");
-        fall = new Texture("character/slide2_p.png");
+
+        fall = new Texture("character/jump_p.png");
     }
 
     private void createPhysicsBody() {
@@ -58,7 +69,6 @@ public class Player {
         body = world.createBody(bodyDef);
         body.setUserData(this);
 
-        // Основная форма тела (круг для плавного движения)
         CircleShape circleShape = new CircleShape();
         circleShape.setRadius(width / 2f / PPM);
 
@@ -92,7 +102,6 @@ public class Player {
     }
 
     public void update(float delta) {
-        // Синхронизация координат графики с физикой
         Vector2 pos = body.getPosition();
         x = pos.x * PPM;
         y = pos.y * PPM;
@@ -103,7 +112,7 @@ public class Player {
                 Gdx.input.justTouched();
 
         if (jumpPressed && isGrounded) {
-            body.applyLinearImpulse(new Vector2(0, 2f), body.getWorldCenter(), true);
+            body.setLinearVelocity(body.getLinearVelocity().x, JUMP_VELOCITY);
             isGrounded = false;
         }
 
@@ -159,6 +168,15 @@ public class Player {
 
     public Body getBody() {
         return body;
+    }
+
+    public Rectangle getBounds() {
+        return bounds.set(
+                x - HITBOX_WIDTH / 2f,
+                y - height / 2f + 9f,
+                HITBOX_WIDTH,
+                HITBOX_HEIGHT
+        );
     }
 
     public void dispose() {

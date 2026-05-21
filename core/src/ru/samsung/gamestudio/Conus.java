@@ -6,9 +6,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class Conus extends Obstacle {
 
-    float x;
-    float y;
-
     float speed;
 
     Texture[] frames;
@@ -26,8 +23,11 @@ public class Conus extends Obstacle {
 
         this.x = x;
         this.y = y;
+        setSize(70, 70);
+        setHitBox(9, 7, 52, 58);
+        setResetX(x + 2600);
 
-        speed = 4;
+        speed = 240;
 
         frames = new Texture[6];
 
@@ -56,12 +56,10 @@ public class Conus extends Obstacle {
 
     public void update(float delta) {
 
-        x -= speed;
+        moveLeft(speed, delta);
 
 
-        if (x < -100) {
-
-            x = 1600;
+        if (resetIfOffScreen()) {
 
             currentFrame = 0;
 
@@ -94,7 +92,7 @@ public class Conus extends Obstacle {
 
     public void draw(SpriteBatch batch) {
 
-        batch.draw(frames[currentFrame], x, y, 70, 70);
+        batch.draw(frames[currentFrame], x, y, width, height);
     }
 
 
@@ -112,4 +110,3 @@ public class Conus extends Obstacle {
         }
     }
 }
-

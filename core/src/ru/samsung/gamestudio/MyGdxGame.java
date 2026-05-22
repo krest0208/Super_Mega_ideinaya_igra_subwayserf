@@ -9,21 +9,17 @@ public class MyGdxGame extends Game {
     public SpriteBatch batch;
     public OrthographicCamera camera;
 
-    public ScreenGame ScreenGame;
-
     @Override
     public void create() {
         batch = new SpriteBatch();
         camera = new OrthographicCamera();
         camera.setToOrtho(false, GameSettings.SCREEN_WIDTH, GameSettings.SCREEN_HEIGHT);
 
-        ScreenGame = new ScreenGame();
-
-        setScreen(ScreenGame);
+        setScreen(new ScreenMenu(this));
     }
 
     @Override
     public void dispose() {
-        batch.dispose();
+        if (batch != null) batch.dispose();
     }
 }

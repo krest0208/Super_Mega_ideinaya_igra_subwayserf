@@ -18,7 +18,7 @@ public class ScreenShop implements Screen {
     @Override
     public void show() {
         batch = new SpriteBatch();
-        background = new Texture("menu/backround.png");
+        background = new Texture("menu/bacround1.png");
     }
 
     @Override

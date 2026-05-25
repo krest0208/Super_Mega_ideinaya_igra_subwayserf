@@ -42,7 +42,7 @@ public class ScreenMenu implements Screen {
 
         batch = new SpriteBatch();
 
-        background = new Texture("menu/background.png");
+        background = new Texture("menu/backround.png");
 
         playButton = new Texture("menu/play.png");
 
@@ -52,6 +52,7 @@ public class ScreenMenu implements Screen {
 
         exitButton = new Texture("menu/exit.png");
 
+        /*
         music = Gdx.audio.newMusic(
                 Gdx.files.internal("music/menu_music.mp3")
         );
@@ -61,6 +62,7 @@ public class ScreenMenu implements Screen {
         music.setVolume(0.4f);
 
         music.play();
+        */
     }
 
     @Override
@@ -82,7 +84,7 @@ public class ScreenMenu implements Screen {
             if (touchX >= 500 && touchX <= 780 &&
                     touchY >= 400 && touchY <= 480) {
 
-                music.stop();
+                if (music != null) music.stop();
 
                 game.setScreen(new ScreenGame(game));
             }
@@ -155,6 +157,6 @@ public class ScreenMenu implements Screen {
 
         exitButton.dispose();
 
-        music.dispose();
+        if (music != null) music.dispose();
     }
 }

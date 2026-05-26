@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.audio.Music;
 
 public class ScreenMenu implements Screen {
 
@@ -52,7 +53,6 @@ public class ScreenMenu implements Screen {
 
         exitButton = new Texture("menu/exit.png");
 
-        /*
         music = Gdx.audio.newMusic(
                 Gdx.files.internal("music/menu_music.mp3")
         );
@@ -62,7 +62,6 @@ public class ScreenMenu implements Screen {
         music.setVolume(0.4f);
 
         music.play();
-        */
     }
 
     @Override

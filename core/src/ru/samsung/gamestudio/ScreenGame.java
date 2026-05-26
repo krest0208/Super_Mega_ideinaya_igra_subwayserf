@@ -13,7 +13,7 @@ import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.ScreenUtils;
-
+import com.badlogic.gdx.Input;
 import java.util.ArrayList;
 
 import ru.samsung.gamestudio.Charecers.Player;
@@ -111,10 +111,12 @@ public class ScreenGame implements Screen {
             }
 
             @Override
-            public void preSolve(Contact contact, Manifold oldManifold) {}
+            public void preSolve(Contact contact, Manifold oldManifold) {
+            }
 
             @Override
-            public void postSolve(Contact contact, ContactImpulse impulse) {}
+            public void postSolve(Contact contact, ContactImpulse impulse) {
+            }
         });
     }
 
@@ -157,8 +159,13 @@ public class ScreenGame implements Screen {
 
         if (gameOver) {
             font.draw(batch, "GAME OVER", 500, 400);
+            font.draw(batch, "RESTART", 500, 350);
         }
         batch.end();
+
+        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            myGdxGame.setScreen(new ScreenGame(myGdxGame));
+        }
     }
 
     @Override

@@ -15,7 +15,6 @@ public class Player {
     private static final float HITBOX_WIDTH = 58f;
     private static final float HITBOX_HEIGHT = 92f;
     private static final float JUMP_VELOCITY = 5.4f;
-
     private float x, y;
     private float width = DRAW_WIDTH;
     private float height = DRAW_HEIGHT;
@@ -109,6 +108,7 @@ public class Player {
         // Прыжок
         boolean jumpPressed = Gdx.input.isKeyJustPressed(Input.Keys.SPACE) ||
                 Gdx.input.isKeyJustPressed(Input.Keys.W) ||
+                //Gdx.input.isKeyJustPressed(Input.Keys.UP) ||
                 Gdx.input.justTouched();
 
         if (jumpPressed && isGrounded) {
@@ -168,6 +168,14 @@ public class Player {
 
     public Body getBody() {
         return body;
+    }
+
+    public float getX() {
+        return x;
+    }
+
+    public float getY() {
+        return y;
     }
 
     public Rectangle getBounds() {

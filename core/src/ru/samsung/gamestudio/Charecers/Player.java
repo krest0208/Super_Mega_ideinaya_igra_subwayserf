@@ -26,8 +26,12 @@ public class Player {
 
     private Body body;
     private World world;
-    private boolean isGrounded;
+    public boolean isGrounded;
     private final Rectangle bounds = new Rectangle();
+
+    public boolean isGrounded() {
+        return false;
+    }
 
     enum State { IDLE, RUN, JUMP, FALL }
     private State state = State.RUN;

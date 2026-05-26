@@ -14,6 +14,7 @@ import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.Input;
+
 import java.util.ArrayList;
 
 import ru.samsung.gamestudio.Charecers.Player;
@@ -47,6 +48,16 @@ public class ScreenGame implements Screen {
 
     private int groundContacts = 0;
 
+    // Кнопка рестарта
+    private Texture restartButtonTexture;
+    private float restartButtonX = SCREEN_WIDTH / 2f - 150;
+    private float restartButtonY = 300;
+    private float restartButtonWidth = 300;
+    private float restartButtonHeight = 80;
+
+    // Для затемнения фона
+    private Texture pixelTexture;
+
     public ScreenGame(MyGdxGame myGdxGame) {
         this.myGdxGame = myGdxGame;
     }
@@ -57,7 +68,18 @@ public class ScreenGame implements Screen {
         camera.setToOrtho(false, SCREEN_WIDTH, SCREEN_HEIGHT);
         batch = new SpriteBatch();
         font = new BitmapFont();
+        font.getData().setScale(2);
+
         backgroundTexture = new Texture("background/bacround1.png");
+        restartButtonTexture = new Texture("menu/play.png");
+
+        // Создаем текстуру 1x1 пиксель для затемнения
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(0, 0, 0, 1);
+        pixmap.fill();
+        pixelTexture = new Texture(pixmap);
+        pixmap.dispose();
+
         world = new World(new Vector2(0, -9.8f), true);
 
         ground = new Ground(
@@ -73,13 +95,18 @@ public class ScreenGame implements Screen {
         player.getBody().setUserData(player);
 
         obstacles = new ArrayList<>();
+        createObstacles();
+
+        gameOver = false;
+        setupContactListener();
+    }
+
+    private void createObstacles() {
+        obstacles.clear();
         obstacles.add(new Conus(FIRST_OBSTACLE_X, GROUND_HEIGHT));
         obstacles.add(new Box(FIRST_OBSTACLE_X + OBSTACLE_SPACING, GROUND_HEIGHT));
         obstacles.add(new Barrier(FIRST_OBSTACLE_X + OBSTACLE_SPACING * 2, GROUND_HEIGHT));
         obstacles.add(new Trash(FIRST_OBSTACLE_X + OBSTACLE_SPACING * 3, GROUND_HEIGHT));
-
-        gameOver = false;
-        setupContactListener();
     }
 
     private void setupContactListener() {
@@ -120,6 +147,52 @@ public class ScreenGame implements Screen {
         });
     }
 
+    private void restartGame() {
+        // Важно: сначала помечаем, что игра больше не в Game Over
+        gameOver = false;
+
+        // Очищаем старые физические объекты из мира
+        if (world != null) {
+            // Удаляем все тела из мира
+            for (Obstacle obstacle : obstacles) {
+                // У Obstacle нет прямого доступа к body, поэтому просто dispose
+                obstacle.dispose();
+            }
+            if (ground != null) {
+                ground.dispose();
+            }
+            if (player != null) {
+                player.dispose();
+            }
+
+            // Пересоздаем мир
+            world.dispose();
+            world = new World(new Vector2(0, -9.8f), true);
+        }
+
+        // Пересоздаем объекты с новым миром
+        ground = new Ground(
+                world,
+                0,
+                GROUND_Y,
+                GROUND_WIDTH,
+                GROUND_HEIGHT,
+                GROUND_SPEED
+        );
+
+        player = new Player(world, 200, GROUND_HEIGHT + Player.DRAW_HEIGHT / 2f);
+        player.getBody().setUserData(player);
+
+        createObstacles();
+
+        // Сбрасываем переменные состояния
+        groundContacts = 0;
+        backgroundX = 0;
+
+        // Переустанавливаем ContactListener
+        setupContactListener();
+    }
+
     @Override
     public void render(float delta) {
         ScreenUtils.clear(0.1f, 0.1f, 0.2f, 1);
@@ -141,13 +214,27 @@ public class ScreenGame implements Screen {
             world.step(Math.min(delta, 1 / 30f), 6, 2);
             player.update(delta);
 
+            // Проверка столкновений
             for (Obstacle obstacle : obstacles) {
                 if (player.getBounds().overlaps(obstacle.getBounds())) {
+                    if (obstacle instanceof Conus) {
+                        ((Conus) obstacle).hit();
+                    } else {
+                        gameOver = true;
+                    }
+                }
+            }
+
+            // Проверка, завершилась ли анимация конуса
+            for (Obstacle obstacle : obstacles) {
+                if (obstacle instanceof Conus && ((Conus) obstacle).isFinished()) {
                     gameOver = true;
+                    break;
                 }
             }
         }
 
+        // Отрисовка
         batch.begin();
         batch.draw(backgroundTexture, backgroundX, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         batch.draw(backgroundTexture, backgroundX + SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -157,14 +244,94 @@ public class ScreenGame implements Screen {
         }
         player.draw(batch);
 
+        // Экран Game Over
         if (gameOver) {
-            font.draw(batch, "GAME OVER", 500, 400);
-            font.draw(batch, "RESTART", 500, 350);
+            // Затемнение фона с помощью pixelTexture
+            batch.setColor(0, 0, 0, 0.7f);
+            batch.draw(pixelTexture, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            batch.setColor(1, 1, 1, 1);
+
+            // Заголовок GAME OVER
+            font.getData().setScale(3);
+            float gameOverTextWidth = font.getRegion().getRegionWidth() * 3 / 2; // Приблизительная ширина
+            font.draw(batch, "GAME OVER", SCREEN_WIDTH / 2f - 150, SCREEN_HEIGHT / 2f + 100);
+
+            // Кнопка рестарта
+            if (restartButtonTexture != null) {
+                batch.draw(restartButtonTexture,
+                        restartButtonX, restartButtonY,
+                        restartButtonWidth, restartButtonHeight);
+
+                font.getData().setScale(1.5f);
+                font.draw(batch, "RESTART",
+                        restartButtonX + restartButtonWidth / 2f - 50,
+                        restartButtonY + restartButtonHeight / 2f + 10);
+            } else {
+                batch.setColor(0.2f, 0.6f, 0.2f, 1);
+                batch.draw(pixelTexture,
+                        restartButtonX, restartButtonY,
+                        restartButtonWidth, restartButtonHeight);
+                batch.setColor(1, 1, 1, 1);
+
+                font.getData().setScale(2);
+                font.draw(batch, "RESTART",
+                        restartButtonX + 70,
+                        restartButtonY + 50);
+            }
+
+            // Подсказка
+            font.getData().setScale(1);
+            font.draw(batch, "Tap RESTART or press SPACE", SCREEN_WIDTH / 2f - 170, 200);
         }
+
         batch.end();
 
-        if (gameOver && Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-            myGdxGame.setScreen(new ScreenGame(myGdxGame));
+        // Обработка ввода (только если не в процессе перезагрузки)
+        if (gameOver) {
+            // Рестарт по нажатию на кнопку
+            if (Gdx.input.justTouched()) {
+                float touchX = Gdx.input.getX();
+                float touchY = SCREEN_HEIGHT - Gdx.input.getY();
+
+                if (touchX >= restartButtonX && touchX <= restartButtonX + restartButtonWidth &&
+                        touchY >= restartButtonY && touchY <= restartButtonY + restartButtonHeight) {
+                    restartGame();
+                }
+            }
+
+            // Рестарт по пробелу
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+                restartGame();
+            }
+        }
+
+        // Прыжок (только если игра не закончена И не нажата кнопка рестарта)
+        if (!gameOver && Gdx.input.justTouched()) {
+            // Проверяем, не нажата ли кнопка рестарта (хотя ее не видно, но на всякий случай)
+            float touchX = Gdx.input.getX();
+            float touchY = SCREEN_HEIGHT - Gdx.input.getY();
+
+            // Если нажали не на область кнопки (когда игра активна, кнопки не видно)
+            if (player.isGrounded()) {
+                player.getBody().setLinearVelocity(0, 0);
+                player.getBody().applyLinearImpulse(0, 7f,
+                        player.getBody().getPosition().x,
+                        player.getBody().getPosition().y,
+                        true);
+                player.setGrounded(false);
+            }
+        }
+
+        // Прыжок по пробелу
+        if (!gameOver && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            if (player.isGrounded()) {
+                player.getBody().setLinearVelocity(0, 0);
+                player.getBody().applyLinearImpulse(0, 7f,
+                        player.getBody().getPosition().x,
+                        player.getBody().getPosition().y,
+                        true);
+                player.setGrounded(false);
+            }
         }
     }
 
@@ -193,5 +360,7 @@ public class ScreenGame implements Screen {
         if (backgroundTexture != null) backgroundTexture.dispose();
         if (batch != null) batch.dispose();
         if (font != null) font.dispose();
+        if (restartButtonTexture != null) restartButtonTexture.dispose();
+        if (pixelTexture != null) pixelTexture.dispose();
     }
 }

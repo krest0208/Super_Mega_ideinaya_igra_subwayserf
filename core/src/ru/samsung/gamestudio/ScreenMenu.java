@@ -11,6 +11,7 @@ import com.badlogic.gdx.audio.Music;
 
 public class ScreenMenu implements Screen {
 
+
     private MyGdxGame game;
 
     private OrthographicCamera camera;
@@ -124,6 +125,7 @@ public class ScreenMenu implements Screen {
 
         batch.end();
     }
+
 
     @Override
     public void resize(int width, int height) {

@@ -10,6 +10,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -34,31 +35,31 @@ public class ScreenGame implements Screen {
     private boolean gameOver;
 
     private float backgroundX = 0;
-    private float backgroundSpeed = 50;
-
+    private float baseBackgroundSpeed = 50f;
+    private float baseGroundSpeed = 200f;
+    private float gameSpeedModifier = 1.0f;
+    private static final float ACCELERATION_RATE = 0.03f;
+    private static final float MAX_SPEED_MODIFIER = 2.5f;
+    private float modeTimer = 0f;
+    private static final float TIME_TO_BOSS = 15f;
     private static final int SCREEN_WIDTH = 1280;
     private static final int SCREEN_HEIGHT = 720;
 
     private static final float GROUND_Y = 0;
     private static final float GROUND_WIDTH = 1280;
     private static final float GROUND_HEIGHT = 180;
-    private static final float GROUND_SPEED = 200f;
     private static final float FIRST_OBSTACLE_X = 1000f;
     private static final float OBSTACLE_SPACING = 650f;
 
     private int groundContacts = 0;
 
-    // Кнопка рестарта - сделаем ее больше и заметнее
     private Texture restartButtonTexture;
     private float restartButtonX;
     private float restartButtonY;
-    private float restartButtonWidth = 400;  // Фиксированная ширина
-    private float restartButtonHeight = 120; // Фиксированная высота
+    private float restartButtonWidth = 400;
+    private float restartButtonHeight = 120;
 
-    // Для затемнения фона
     private Texture pixelTexture;
-
-    // Для отладки
     private boolean debugMode = true;
 
     public ScreenGame(MyGdxGame myGdxGame) {
@@ -73,43 +74,30 @@ public class ScreenGame implements Screen {
         font = new BitmapFont();
         font.getData().setScale(2);
 
-        backgroundTexture = new Texture("background/bacround1.png");
+        backgroundTexture = new Texture("background/post2.png");
 
-        // Загружаем текстуру рестарта
         try {
             restartButtonTexture = new Texture("restart.png");
-            System.out.println("✓ Restart texture loaded: " + restartButtonTexture.getWidth() + "x" + restartButtonTexture.getHeight());
         } catch (Exception e) {
-            System.out.println("✗ Restart texture NOT loaded, using rectangle button");
             restartButtonTexture = null;
         }
 
-        // ✅ ФИКСИРОВАННЫЕ КООРДИНАТЫ КНОПКИ (прямо по центру)
         restartButtonX = SCREEN_WIDTH / 2f - restartButtonWidth / 2;
         restartButtonY = SCREEN_HEIGHT / 2f - restartButtonHeight / 2;
 
-        System.out.println("=== BUTTON POSITION ===");
-        System.out.println("Button: X=" + restartButtonX + " Y=" + restartButtonY);
-        System.out.println("Size: " + restartButtonWidth + "x" + restartButtonHeight);
-        System.out.println("======================");
-
-        // Создаем текстуру 1x1 пиксель для затемнения и кнопки
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         pixmap.setColor(0, 0, 0, 1);
         pixmap.fill();
         pixelTexture = new Texture(pixmap);
         pixmap.dispose();
 
-        world = new World(new Vector2(0, -9.8f), true);
+        initGameWorld();
+    }
 
-        ground = new Ground(
-                world,
-                0,
-                GROUND_Y,
-                GROUND_WIDTH,
-                GROUND_HEIGHT,
-                GROUND_SPEED
-        );
+    private void initGameWorld() {
+        world = new World(new Vector2(0, -14.0f), true); // Слегка усилили гравитацию для динамики
+
+        ground = new Ground(world, 0, GROUND_Y, GROUND_WIDTH, GROUND_HEIGHT, baseGroundSpeed);
 
         player = new Player(world, 200, GROUND_HEIGHT + Player.DRAW_HEIGHT / 2f);
         player.getBody().setUserData(player);
@@ -117,7 +105,12 @@ public class ScreenGame implements Screen {
         obstacles = new ArrayList<>();
         createObstacles();
 
+        gameSpeedModifier = 1.0f;
+        modeTimer = 0f;
+        groundContacts = 0;
+        backgroundX = 0;
         gameOver = false;
+
         setupContactListener();
     }
 
@@ -133,7 +126,7 @@ public class ScreenGame implements Screen {
         world.setContactListener(new ContactListener() {
             @Override
             public void beginContact(Contact contact) {
-                if (isPlayerGroundCollision(contact)) {
+                if (checkPlayerGroundSensor(contact)) {
                     groundContacts++;
                     player.setGrounded(true);
                 }
@@ -141,7 +134,7 @@ public class ScreenGame implements Screen {
 
             @Override
             public void endContact(Contact contact) {
-                if (isPlayerGroundCollision(contact)) {
+                if (checkPlayerGroundSensor(contact)) {
                     groundContacts--;
                     if (groundContacts <= 0) {
                         groundContacts = 0;
@@ -150,63 +143,33 @@ public class ScreenGame implements Screen {
                 }
             }
 
-            private boolean isPlayerGroundCollision(Contact contact) {
-                Object userDataA = contact.getFixtureA().getBody().getUserData();
-                Object userDataB = contact.getFixtureB().getBody().getUserData();
-                return (userDataA == player && userDataB == ground) ||
-                        (userDataA == ground && userDataB == player);
+            private boolean checkPlayerGroundSensor(Contact contact) {
+                Fixture fixA = contact.getFixtureA();
+                Fixture fixB = contact.getFixtureB();
+
+                boolean aIsSensor = "player_ground_sensor".equals(fixA.getUserData());
+                boolean bIsSensor = "player_ground_sensor".equals(fixB.getUserData());
+
+                return (aIsSensor && fixB.getBody().getUserData() == ground) ||
+                        (bIsSensor && fixA.getBody().getUserData() == ground) ||
+                        (aIsSensor && fixB.getBody().getUserData() != null && fixB.getBody().getUserData().toString().contains("platform")) ||
+                        (bIsSensor && fixA.getBody().getUserData() != null && fixA.getBody().getUserData().toString().contains("platform"));
             }
 
-            @Override
-            public void preSolve(Contact contact, Manifold oldManifold) {
-            }
-
-            @Override
-            public void postSolve(Contact contact, ContactImpulse impulse) {
-            }
+            @Override public void preSolve(Contact contact, Manifold oldManifold) {}
+            @Override public void postSolve(Contact contact, ContactImpulse impulse) {}
         });
     }
 
     private void restartGame() {
-        System.out.println("========================================");
-        System.out.println(">>> RESTARTING GAME <<<");
-        System.out.println("========================================");
-
-        gameOver = false;
-
+        System.out.println("RESTARTING GAME");
         if (world != null) {
-            for (Obstacle obstacle : obstacles) {
-                obstacle.dispose();
-            }
-            if (ground != null) {
-                ground.dispose();
-            }
-            if (player != null) {
-                player.dispose();
-            }
-
+            for (Obstacle obstacle : obstacles) obstacle.dispose();
+            if (ground != null) ground.dispose();
+            if (player != null) player.dispose();
             world.dispose();
-            world = new World(new Vector2(0, -9.8f), true);
         }
-
-        ground = new Ground(
-                world,
-                0,
-                GROUND_Y,
-                GROUND_WIDTH,
-                GROUND_HEIGHT,
-                GROUND_SPEED
-        );
-
-        player = new Player(world, 200, GROUND_HEIGHT + Player.DRAW_HEIGHT / 2f);
-        player.getBody().setUserData(player);
-
-        createObstacles();
-
-        groundContacts = 0;
-        backgroundX = 0;
-
-        setupContactListener();
+        initGameWorld();
     }
 
     @Override
@@ -215,179 +178,140 @@ public class ScreenGame implements Screen {
         camera.update();
         batch.setProjectionMatrix(camera.combined);
 
-        // Обновление игры
         if (!gameOver) {
-            backgroundX -= backgroundSpeed * delta;
-            if (backgroundX <= -SCREEN_WIDTH) {
-                backgroundX = 0;
-            }
 
-            ground.update(delta);
+            if (player.getCurrentMode() == Player.GameMode.RUNNER) {
+                modeTimer += delta;
 
-            for (Obstacle obstacle : obstacles) {
-                obstacle.update(delta);
+                if (gameSpeedModifier < MAX_SPEED_MODIFIER) {
+                    gameSpeedModifier += ACCELERATION_RATE * delta;
+                }
+
+                backgroundX -= baseBackgroundSpeed * gameSpeedModifier * delta;
+                if (backgroundX <= -SCREEN_WIDTH) {
+                    backgroundX = 0;
+                }
+
+                ground.update(delta * gameSpeedModifier);
+                for (Obstacle obstacle : obstacles) {
+                    obstacle.update(delta * gameSpeedModifier);
+                }
+
+
+                if (modeTimer >= TIME_TO_BOSS) {
+                    switchToPlatformerMode();
+                }
+
+            } else {
+                backgroundX = backgroundX;
+
+                ground.update(0);
+                for (Obstacle obstacle : obstacles) {
+                    obstacle.update(0);
+                }
             }
 
             world.step(Math.min(delta, 1 / 30f), 6, 2);
             player.update(delta);
 
-            for (Obstacle obstacle : obstacles) {
-                if (player.getBounds().overlaps(obstacle.getBounds())) {
-                    if (obstacle instanceof Conus) {
-                        ((Conus) obstacle).hit();
-                    } else {
+            if (player.getCurrentMode() == Player.GameMode.RUNNER) {
+                for (Obstacle obstacle : obstacles) {
+                    if (player.getBounds().overlaps(obstacle.getBounds())) {
+                        if (obstacle instanceof Conus) {
+                            ((Conus) obstacle).hit();
+                        } else {
+                            gameOver = true;
+                        }
+                    }
+                }
+                for (Obstacle obstacle : obstacles) {
+                    if (obstacle instanceof Conus && ((Conus) obstacle).isFinished()) {
                         gameOver = true;
-                        System.out.println(">>> GAME OVER! <<<");
+                        break;
                     }
                 }
             }
-
-            for (Obstacle obstacle : obstacles) {
-                if (obstacle instanceof Conus && ((Conus) obstacle).isFinished()) {
-                    gameOver = true;
-                    System.out.println(">>> GAME OVER from Conus! <<<");
-                    break;
-                }
-            }
         }
-
-        // Отрисовка всего
         batch.begin();
 
-        // Фон
         batch.draw(backgroundTexture, backgroundX, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         batch.draw(backgroundTexture, backgroundX + SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-        // Игровые объекты
         ground.draw(batch);
         for (Obstacle obstacle : obstacles) {
             obstacle.draw(batch);
         }
         player.draw(batch);
 
-        // ✅ Game Over экран (РИСУЕМ ПОВЕРХ ВСЕГО)
         if (gameOver) {
-            // Полупрозрачный черный фон
-            batch.setColor(0, 0, 0, 0.8f);
-            batch.draw(pixelTexture, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            batch.setColor(1, 1, 1, 1);
-
-            // GAME OVER текст
-            font.getData().setScale(3);
-            font.setColor(1, 0, 0, 1);
-            float textX = SCREEN_WIDTH / 2f - 130;
-            float textY = SCREEN_HEIGHT / 2f + 100;
-            font.draw(batch, "GAME OVER", textX, textY);
-            font.setColor(1, 1, 1, 1);
-
-            // ✅ КНОПКА РЕСТАРТА (РИСУЕМ ПОСЛЕ ЗАТЕМНЕНИЯ)
-            if (restartButtonTexture != null) {
-                // Рисуем текстуру кнопки
-                batch.draw(restartButtonTexture,
-                        restartButtonX, restartButtonY,
-                        restartButtonWidth, restartButtonHeight);
-            } else {
-                // Рисуем зеленую кнопку
-                batch.setColor(0, 0.8f, 0, 1);
-                batch.draw(pixelTexture,
-                        restartButtonX, restartButtonY,
-                        restartButtonWidth, restartButtonHeight);
-                batch.setColor(1, 1, 1, 1);
-
-                font.getData().setScale(2);
-                font.draw(batch, "RESTART",
-                        restartButtonX + restartButtonWidth/2f - 60,
-                        restartButtonY + restartButtonHeight/2f + 10);
-            }
-
-            // ✅ Красная рамка для отладки (видите ее? значит кнопка рисуется!)
-            if (debugMode) {
-                batch.setColor(1, 0, 0, 1);
-                batch.draw(pixelTexture, restartButtonX, restartButtonY, restartButtonWidth, 3);
-                batch.draw(pixelTexture, restartButtonX, restartButtonY + restartButtonHeight - 3, restartButtonWidth, 3);
-                batch.draw(pixelTexture, restartButtonX, restartButtonY, 3, restartButtonHeight);
-                batch.draw(pixelTexture, restartButtonX + restartButtonWidth - 3, restartButtonY, 3, restartButtonHeight);
-                batch.setColor(1, 1, 1, 1);
-            }
+            drawGameOverScreen();
         }
 
         batch.end();
 
-        // ✅ ОБРАБОТКА НАЖАТИЙ (отдельно от отрисовки)
+        handleInputSystem();
+    }
+
+    private void switchToPlatformerMode() {
+        System.out.println("DANGEROUS");
+        player.setGameMode(Player.GameMode.PLATFORMER);
+
+        for (Obstacle obs : obstacles) {
+            obs.dispose();
+        }
+        obstacles.clear();
+    }
+
+    private void handleInputSystem() {
+        // Логика тач-событий (мышь/экран)
         if (Gdx.input.justTouched()) {
             float touchX = Gdx.input.getX();
             float touchY = SCREEN_HEIGHT - Gdx.input.getY();
 
-            System.out.println("Touch at: (" + (int)touchX + ", " + (int)touchY + ")");
-
             if (gameOver) {
-                // Проверка кнопки рестарта
-                boolean inX = touchX >= restartButtonX && touchX <= restartButtonX + restartButtonWidth;
-                boolean inY = touchY >= restartButtonY && touchY <= restartButtonY + restartButtonHeight;
-
-                System.out.println("Button bounds: X[" + (int)restartButtonX + "-" + (int)(restartButtonX + restartButtonWidth) +
-                        "] Y[" + (int)restartButtonY + "-" + (int)(restartButtonY + restartButtonHeight) + "]");
-                System.out.println("Hit: X=" + inX + " Y=" + inY);
-
-                if (inX && inY) {
-                    System.out.println(">>> RESTART BUTTON PRESSED! <<<");
+                if (touchX >= restartButtonX && touchX <= restartButtonX + restartButtonWidth &&
+                        touchY >= restartButtonY && touchY <= restartButtonY + restartButtonHeight) {
                     restartGame();
-                } else {
-                    System.out.println("Missed button");
                 }
             } else {
-                // Прыжок в игре
-                if (player.isGrounded()) {
-                    player.getBody().setLinearVelocity(0, 0);
-                    player.getBody().applyLinearImpulse(0, 7f,
-                            player.getBody().getPosition().x,
-                            player.getBody().getPosition().y,
-                            true);
-                    player.setGrounded(false);
-                    System.out.println("Jump!");
+                // Если кликнули по экрану в режиме раннера — прыгаем импульсом
+                if (player.isGrounded() && player.getCurrentMode() == Player.GameMode.RUNNER) {
+                    executeJumpImpulse();
                 }
             }
         }
 
-        // Прыжок по пробелу для ПК
-        if (!gameOver && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            if (player.isGrounded()) {
-                player.getBody().setLinearVelocity(0, 0);
-                player.getBody().applyLinearImpulse(0, 7f,
-                        player.getBody().getPosition().x,
-                        player.getBody().getPosition().y,
-                        true);
-                player.setGrounded(false);
+        // Дублирование прыжка кнопками для десктопа
+        if (!gameOver && player.isGrounded()) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.W) || Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+                executeJumpImpulse();
             }
         }
     }
 
-    @Override
-    public void resize(int width, int height) {
-        camera.setToOrtho(false, SCREEN_WIDTH, SCREEN_HEIGHT);
+    private void executeJumpImpulse() {
+        player.getBody().setLinearVelocity(player.getBody().getLinearVelocity().x, 5.4f);
+        player.setGrounded(false);
     }
 
-    @Override
-    public void pause() {}
+    private void drawGameOverScreen() {
+        if (restartButtonTexture != null) {
+            batch.draw(restartButtonTexture, restartButtonX, restartButtonY, restartButtonWidth, restartButtonHeight);
+        } else {
+            font.draw(batch, "GAME OVER! Tap to Restart", SCREEN_WIDTH / 2f - 150, SCREEN_HEIGHT / 2f);
+        }
+    }
 
-    @Override
-    public void resume() {}
-
-    @Override
-    public void hide() {}
-
+    @Override public void resize(int width, int height) {}
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
     @Override
     public void dispose() {
-        if (player != null) player.dispose();
-        if (ground != null) ground.dispose();
-        for (Obstacle obstacle : obstacles) {
-            obstacle.dispose();
-        }
-        if (world != null) world.dispose();
-        if (backgroundTexture != null) backgroundTexture.dispose();
-        if (batch != null) batch.dispose();
-        if (font != null) font.dispose();
+        batch.dispose();
+        backgroundTexture.dispose();
+        font.dispose();
         if (restartButtonTexture != null) restartButtonTexture.dispose();
-        if (pixelTexture != null) pixelTexture.dispose();
+        if (world != null) world.dispose();
     }
 }

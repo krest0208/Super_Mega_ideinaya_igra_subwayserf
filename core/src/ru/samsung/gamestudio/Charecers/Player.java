@@ -15,6 +15,11 @@ public class Player {
     private static final float HITBOX_WIDTH = 58f;
     private static final float HITBOX_HEIGHT = 92f;
     private static final float JUMP_VELOCITY = 5.4f;
+    private static final float WALK_SPEED = 3.5f;
+
+    public enum GameMode { RUNNER, PLATFORMER }
+    private GameMode currentMode = GameMode.RUNNER;
+
     private float x, y;
     private float width = DRAW_WIDTH;
     private float height = DRAW_HEIGHT;
@@ -23,6 +28,7 @@ public class Player {
     private Texture[] run;
     private int runFrame;
     private float animationTimer;
+    private boolean flipX = false;
 
     private Body body;
     private World world;
@@ -30,7 +36,7 @@ public class Player {
     private final Rectangle bounds = new Rectangle();
 
     public boolean isGrounded() {
-        return false;
+        return isGrounded;
     }
 
     enum State { IDLE, RUN, JUMP, FALL }
@@ -38,7 +44,7 @@ public class Player {
 
     public Player(World world, float x, float y) {
         if (world == null) {
-            throw new IllegalArgumentException("World не должен быть null!");
+            throw new IllegalArgumentException("World cannot be null");
         }
         this.world = world;
         this.x = x;
@@ -49,17 +55,11 @@ public class Player {
     }
 
     private void loadTextures() {
-
         run = new Texture[2];
-
         run[0] = new Texture("character/run_1.png");
-
         run[1] = new Texture("character/run_2.png");
-
         idle = new Texture("character/static_p.png");
-
         jump = new Texture("character/jump_p.png");
-
         fall = new Texture("character/jump_p.png");
     }
 
@@ -73,13 +73,12 @@ public class Player {
         body.setUserData(this);
 
         CircleShape circleShape = new CircleShape();
-        circleShape.setRadius(width / 2f / PPM);
-
+        circleShape.setRadius(width / 2.5f / PPM);
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = circleShape;
         fixtureDef.density = 1.0f;
-        fixtureDef.friction = 0.5f;
-        fixtureDef.restitution = 0.1f;
+        fixtureDef.friction = 0.0f;
+        fixtureDef.restitution = 0.0f;
 
         body.createFixture(fixtureDef);
         circleShape.dispose();
@@ -89,9 +88,8 @@ public class Player {
 
     private void createGroundSensor() {
         PolygonShape sensorShape = new PolygonShape();
-        // Датчик в ногах игрока
         sensorShape.setAsBox(
-                width / 3f / PPM, 5f / PPM,
+                width / 4f / PPM, 5f / PPM,
                 new Vector2(0, -height / 2f / PPM), 0
         );
 
@@ -109,10 +107,24 @@ public class Player {
         x = pos.x * PPM;
         y = pos.y * PPM;
 
-        // Прыжок
+        float horizontalSpeed = 0f;
+        if (currentMode == GameMode.PLATFORMER) {
+            if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+                horizontalSpeed = -WALK_SPEED;
+                flipX = true;
+            } else if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+                horizontalSpeed = WALK_SPEED;
+                flipX = false;
+            }
+            body.setLinearVelocity(horizontalSpeed, body.getLinearVelocity().y);
+        } else {
+            body.setLinearVelocity(0, body.getLinearVelocity().y);
+            flipX = false;
+        }
+
         boolean jumpPressed = Gdx.input.isKeyJustPressed(Input.Keys.SPACE) ||
                 Gdx.input.isKeyJustPressed(Input.Keys.W) ||
-                //Gdx.input.isKeyJustPressed(Input.Keys.UP) ||
+                Gdx.input.isKeyJustPressed(Input.Keys.UP) ||
                 Gdx.input.justTouched();
 
         if (jumpPressed && isGrounded) {
@@ -126,12 +138,17 @@ public class Player {
 
     private void updateState() {
         float velocityY = body.getLinearVelocity().y;
+        float velocityX = body.getLinearVelocity().x;
 
         if (!isGrounded) {
             if (velocityY > 0.1f) state = State.JUMP;
             else if (velocityY < -0.1f) state = State.FALL;
         } else {
-            state = State.RUN;
+            if (currentMode == GameMode.PLATFORMER && Math.abs(velocityX) < 0.1f) {
+                state = State.IDLE;
+            } else {
+                state = State.RUN;
+            }
         }
     }
 
@@ -156,14 +173,26 @@ public class Player {
             case RUN:  currentTexture = run[runFrame]; break;
             default:   currentTexture = idle; break;
         }
-
         batch.draw(
                 currentTexture,
                 x - width / 2f,
                 y - height / 2f,
                 width,
-                height
+                height,
+                0, 0,
+                currentTexture.getWidth(), currentTexture.getHeight(),
+                flipX, false
         );
+    }
+    public void setGameMode(GameMode mode) {
+        this.currentMode = mode;
+        if (mode == GameMode.RUNNER) {
+            state = State.RUN;
+        }
+    }
+
+    public GameMode getCurrentMode() {
+        return currentMode;
     }
 
     public void setGrounded(boolean grounded) {

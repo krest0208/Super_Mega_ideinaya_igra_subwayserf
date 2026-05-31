@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 
 public class ScreenMenu implements Screen {
 
+
     private MyGdxGame game;
     private OrthographicCamera camera;
     private SpriteBatch batch;
@@ -102,6 +103,7 @@ public class ScreenMenu implements Screen {
 
         batch.end();
     }
+
 
     @Override
     public void resize(int width, int height) {}

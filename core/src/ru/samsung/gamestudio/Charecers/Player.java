@@ -14,7 +14,7 @@ public class Player {
     public static final float DRAW_HEIGHT = 110f;
     private static final float HITBOX_WIDTH = 58f;
     private static final float HITBOX_HEIGHT = 92f;
-    private static final float JUMP_VELOCITY = 5.4f;
+    private static final float JUMP_VELOCITY = 6.4f;
     private static final float WALK_SPEED = 3.5f;
 
     public enum GameMode { RUNNER, PLATFORMER }
@@ -33,6 +33,9 @@ public class Player {
     private Body body;
     private World world;
     public boolean isGrounded;
+    public boolean isFlipped() {
+        return flipX;
+    }
     private final Rectangle bounds = new Rectangle();
 
     public boolean isGrounded() {

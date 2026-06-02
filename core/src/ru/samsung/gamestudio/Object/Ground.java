@@ -10,33 +10,26 @@ public class Ground {
     private static final float PPM = 100f;
 
     private Texture texture;
-
     private float y;
     private float width;
     private float height;
     private float speed;
     private float textureWidth;
-
     private float x1;
     private float x2;
-
     private Body body1;
     private Body body2;
-
     private World world;
 
     public Ground(World world, float x, float y, float width, float height, float speed) {
         if (world == null) {
-            throw new IllegalArgumentException("World не должен быть null. Сначала создай World в ScreenGame.");
+            throw new IllegalArgumentException("World не должен быть null");
         }
 
         this.world = world;
-
         this.texture = new Texture("Object/Ground1.png");
-
         this.x1 = x;
         this.x2 = x + width;
-
         this.y = y;
         this.width = width;
         this.height = height;
@@ -49,23 +42,14 @@ public class Ground {
 
     private Body createPhysicsBody(float x, float y) {
         BodyDef bodyDef = new BodyDef();
-
         bodyDef.type = BodyDef.BodyType.StaticBody;
-
-        bodyDef.position.set(
-                (x + width / 2f) / PPM,
-                (y + height / 2f) / PPM
-        );
+        bodyDef.position.set((x + width / 2f) / PPM, (y + height / 2f) / PPM);
 
         Body body = world.createBody(bodyDef);
         body.setUserData(this);
 
         PolygonShape shape = new PolygonShape();
-
-        shape.setAsBox(
-                width / 2f / PPM,
-                height / 2f / PPM
-        );
+        shape.setAsBox(width / 2f / PPM, height / 2f / PPM);
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = shape;
@@ -73,10 +57,13 @@ public class Ground {
         fixtureDef.restitution = 0.1f;
 
         body.createFixture(fixtureDef);
-
         shape.dispose();
 
         return body;
+    }
+
+    public void setSpeed(float newSpeed) {
+        this.speed = newSpeed;
     }
 
     public void update(float deltaTime) {
@@ -86,7 +73,6 @@ public class Ground {
         if (x1 + textureWidth < 0) {
             x1 = x2 + textureWidth;
         }
-
         if (x2 + textureWidth < 0) {
             x2 = x1 + textureWidth;
         }
@@ -97,13 +83,7 @@ public class Ground {
 
     private void updateBodyPosition(Body body, float x) {
         if (body != null) {
-            body.setTransform(
-                    new Vector2(
-                            (x + width / 2f) / PPM,
-                            (y + height / 2f) / PPM
-                    ),
-                    0
-            );
+            body.setTransform(new Vector2((x + width / 2f) / PPM, (y + height / 2f) / PPM), 0);
         }
     }
 
@@ -112,19 +92,13 @@ public class Ground {
         batch.draw(texture, x2, y, width, height);
     }
 
+    public Body getBody() {
+        return body1;
+    }
+
     public void dispose() {
-        if (texture != null) {
-            texture.dispose();
-        }
-
-        if (body1 != null && world != null) {
-            world.destroyBody(body1);
-            body1 = null;
-        }
-
-        if (body2 != null && world != null) {
-            world.destroyBody(body2);
-            body2 = null;
-        }
+        if (texture != null) texture.dispose();
+        if (body1 != null && world != null) world.destroyBody(body1);
+        if (body2 != null && world != null) world.destroyBody(body2);
     }
 }

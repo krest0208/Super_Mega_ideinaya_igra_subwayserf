@@ -12,7 +12,8 @@ public class Box extends Obstacle {
         this.x = x;
         this.y = y;
         setSize(50, 50);
-        setHitBox(4, 5, 42, 41);
+        // НЕМНОГО УМЕНЬШАЕМ ХИТБОКС
+        setHitBox(8, 8, 34, 34);  // Было: 4, 5, 42, 41
         setResetX(x + 2600);
 
         texture = new Texture("decor/box.png");

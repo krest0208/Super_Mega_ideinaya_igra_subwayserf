@@ -14,11 +14,7 @@ public class Player {
     public static final float DRAW_HEIGHT = 110f;
     private static final float HITBOX_WIDTH = 58f;
     private static final float HITBOX_HEIGHT = 92f;
-    private static final float JUMP_VELOCITY = 6.4f;
-    private static final float WALK_SPEED = 3.5f;
-
-    public enum GameMode { RUNNER, PLATFORMER }
-    private GameMode currentMode = GameMode.RUNNER;
+    private static final float JUMP_VELOCITY = 7.5f;
 
     private float x, y;
     private float width = DRAW_WIDTH;
@@ -28,33 +24,29 @@ public class Player {
     private Texture[] run;
     private int runFrame;
     private float animationTimer;
-    private boolean flipX = false;
 
     private Body body;
     private World world;
-    public boolean isGrounded;
-    public boolean isFlipped() {
-        return flipX;
-    }
+    private boolean isGrounded;
     private final Rectangle bounds = new Rectangle();
-
-    public boolean isGrounded() {
-        return isGrounded;
-    }
+    private boolean isFacingRight = true;
 
     enum State { IDLE, RUN, JUMP, FALL }
     private State state = State.RUN;
 
     public Player(World world, float x, float y) {
         if (world == null) {
-            throw new IllegalArgumentException("World cannot be null");
+            throw new IllegalArgumentException("World не должен быть null!");
         }
         this.world = world;
         this.x = x;
         this.y = y;
-
         loadTextures();
         createPhysicsBody();
+    }
+
+    public boolean isGrounded() {
+        return isGrounded;
     }
 
     private void loadTextures() {
@@ -76,25 +68,22 @@ public class Player {
         body.setUserData(this);
 
         CircleShape circleShape = new CircleShape();
-        circleShape.setRadius(width / 2.5f / PPM);
+        circleShape.setRadius(width / 2f / PPM);
+
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = circleShape;
         fixtureDef.density = 1.0f;
-        fixtureDef.friction = 0.0f;
-        fixtureDef.restitution = 0.0f;
+        fixtureDef.friction = 0.5f;
+        fixtureDef.restitution = 0.1f;
 
         body.createFixture(fixtureDef);
         circleShape.dispose();
-
         createGroundSensor();
     }
 
     private void createGroundSensor() {
         PolygonShape sensorShape = new PolygonShape();
-        sensorShape.setAsBox(
-                width / 4f / PPM, 5f / PPM,
-                new Vector2(0, -height / 2f / PPM), 0
-        );
+        sensorShape.setAsBox(width / 3f / PPM, 5f / PPM, new Vector2(0, -height / 2f / PPM), 0);
 
         FixtureDef sensorDef = new FixtureDef();
         sensorDef.shape = sensorShape;
@@ -110,24 +99,8 @@ public class Player {
         x = pos.x * PPM;
         y = pos.y * PPM;
 
-        float horizontalSpeed = 0f;
-        if (currentMode == GameMode.PLATFORMER) {
-            if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-                horizontalSpeed = -WALK_SPEED;
-                flipX = true;
-            } else if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-                horizontalSpeed = WALK_SPEED;
-                flipX = false;
-            }
-            body.setLinearVelocity(horizontalSpeed, body.getLinearVelocity().y);
-        } else {
-            body.setLinearVelocity(0, body.getLinearVelocity().y);
-            flipX = false;
-        }
-
         boolean jumpPressed = Gdx.input.isKeyJustPressed(Input.Keys.SPACE) ||
                 Gdx.input.isKeyJustPressed(Input.Keys.W) ||
-                Gdx.input.isKeyJustPressed(Input.Keys.UP) ||
                 Gdx.input.justTouched();
 
         if (jumpPressed && isGrounded) {
@@ -135,23 +108,23 @@ public class Player {
             isGrounded = false;
         }
 
+        isFacingRight = true;
+
         updateState();
         updateAnimation(delta);
     }
 
+    public void setFacingDirection(boolean facingRight) {
+        this.isFacingRight = facingRight;
+    }
+
     private void updateState() {
         float velocityY = body.getLinearVelocity().y;
-        float velocityX = body.getLinearVelocity().x;
-
         if (!isGrounded) {
             if (velocityY > 0.1f) state = State.JUMP;
             else if (velocityY < -0.1f) state = State.FALL;
         } else {
-            if (currentMode == GameMode.PLATFORMER && Math.abs(velocityX) < 0.1f) {
-                state = State.IDLE;
-            } else {
-                state = State.RUN;
-            }
+            state = State.RUN;
         }
     }
 
@@ -176,62 +149,30 @@ public class Player {
             case RUN:  currentTexture = run[runFrame]; break;
             default:   currentTexture = idle; break;
         }
-        batch.draw(
-                currentTexture,
-                x - width / 2f,
-                y - height / 2f,
-                width,
-                height,
-                0, 0,
-                currentTexture.getWidth(), currentTexture.getHeight(),
-                flipX, false
-        );
-    }
-    public void setGameMode(GameMode mode) {
-        this.currentMode = mode;
-        if (mode == GameMode.RUNNER) {
-            state = State.RUN;
+
+        if (!isFacingRight) {
+            batch.draw(currentTexture, x + width / 2f, y - height / 2f, -width, height);
+        } else {
+            batch.draw(currentTexture, x - width / 2f, y - height / 2f, width, height);
         }
     }
 
-    public GameMode getCurrentMode() {
-        return currentMode;
-    }
-
-    public void setGrounded(boolean grounded) {
-        this.isGrounded = grounded;
-    }
-
-    public Body getBody() {
-        return body;
-    }
-
-    public float getX() {
-        return x;
-    }
-
-    public float getY() {
-        return y;
-    }
+    public void setGrounded(boolean grounded) { this.isGrounded = grounded; }
+    public Body getBody() { return body; }
+    public float getX() { return x; }
+    public float getY() { return y; }
+    public boolean isFacingRight() { return isFacingRight; }
+    public boolean isFlipped() { return !isFacingRight; }
 
     public Rectangle getBounds() {
-        return bounds.set(
-                x - HITBOX_WIDTH / 2f,
-                y - height / 2f + 9f,
-                HITBOX_WIDTH,
-                HITBOX_HEIGHT
-        );
+        return bounds.set(x - HITBOX_WIDTH / 2f, y - height / 2f + 9f, HITBOX_WIDTH, HITBOX_HEIGHT);
     }
 
     public void dispose() {
         if (idle != null) idle.dispose();
         if (jump != null) jump.dispose();
         if (fall != null) fall.dispose();
-        if (run != null) {
-            for (Texture t : run) if (t != null) t.dispose();
-        }
-        if (body != null && world != null) {
-            world.destroyBody(body);
-        }
+        if (run != null) for (Texture t : run) if (t != null) t.dispose();
+        if (body != null && world != null) world.destroyBody(body);
     }
 }

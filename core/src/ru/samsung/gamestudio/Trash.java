@@ -12,7 +12,8 @@ public class Trash extends Obstacle {
         this.x = x;
         this.y = y;
         setSize(100, 100);
-        setHitBox(17, 11, 66, 82);
+        // УМЕНЬШАЕМ ХИТБОКС для упрощения
+        setHitBox(25, 15, 50, 65);  // Было: 17, 11, 66, 82
         setResetX(x + 2600);
 
         texture = new Texture("decor/trash can.png");
